@@ -1,0 +1,318 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTradingBot(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
+             data.assetClass in ['CRYPTO', 'METALS', 'FOREX'] &&
+             data.exchange in ['BINANCE', 'COINBASE', 'KRAKEN', 'BYBIT', 'OKX', 'METALS_SPOT', 'FOREX_INTERBANK', 'FXPRO', 'OCTAFX'] &&
+             data.symbol is string && data.symbol.size() >= 3 && data.symbol.size() <= 20 &&
+             data.strategy in ['EMA_CROSS', 'RSI_REVERSION', 'GRID', 'MARTINGALE', 'TRADINGVIEW_21', 'DCA', 'BOLLINGER'] &&
+             (!('strategies' in data) || (
+               data.strategies is list &&
+               data.strategies.size() >= 1 &&
+               data.strategies.size() <= 7 &&
+               data.strategies.hasOnly(['EMA_CROSS', 'RSI_REVERSION', 'GRID', 'MARTINGALE', 'TRADINGVIEW_21', 'DCA', 'BOLLINGER'])
+             )) &&
+             (!('strategyMode' in data) || data.strategyMode in ['ANY', 'ALL']) &&
+             data.executionMode in ['PAPER', 'LIVE_API'] &&
+             data.status in ['RUNNING', 'PAUSED', 'HALTED_RISK'] &&
+             data.allocatedCapitalUsd is number && data.allocatedCapitalUsd >= 10 && data.allocatedCapitalUsd <= 10000000 &&
+             data.leverage is number && data.leverage >= 1 && data.leverage <= 20 &&
+             data.stopLossPct is number && data.stopLossPct >= 0.1 && data.stopLossPct <= 50 &&
+             data.takeProfitPct is number && data.takeProfitPct >= 0.1 && data.takeProfitPct <= 500 &&
+             data.trailingStopPct is number && data.trailingStopPct >= 0 && data.trailingStopPct <= 25 &&
+             data.maxPositionPct is number && data.maxPositionPct >= 1 && data.maxPositionPct <= 100 &&
+             data.rsiOversold is int && data.rsiOversold >= 5 && data.rsiOversold <= 45 &&
+             data.rsiOverbought is int && data.rsiOverbought >= 55 && data.rsiOverbought <= 95 &&
+             data.gridLevels is int && data.gridLevels >= 2 && data.gridLevels <= 50 &&
+             data.realizedPnlUsd is number &&
+             data.totalTrades is int && data.totalTrades >= 0 &&
+             data.winningTrades is int && data.winningTrades >= 0 &&
+             data.openPositionSide in ['NONE', 'LONG', 'SHORT'] &&
+             data.openEntryPrice is number && data.openEntryPrice >= 0 &&
+             data.openQuantity is number && data.openQuantity >= 0 &&
+             data.peakUnrealizedPct is number &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidTradeExecution(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.botId is string && data.botId.size() >= 1 && data.botId.size() <= 128 &&
+             data.botName is string && data.botName.size() >= 1 && data.botName.size() <= 60 &&
+             data.assetClass in ['CRYPTO', 'METALS', 'FOREX'] &&
+             data.exchange is string && data.exchange.size() >= 1 && data.exchange.size() <= 40 &&
+             data.symbol is string && data.symbol.size() >= 3 && data.symbol.size() <= 20 &&
+             data.side in ['BUY', 'SELL'] &&
+             data.orderType in ['MARKET', 'STOP_LOSS', 'TAKE_PROFIT', 'TRAILING_STOP', 'GRID_FILL'] &&
+             data.executionMode in ['PAPER', 'LIVE_API'] &&
+             data.price is number && data.price > 0 &&
+             data.quantity is number && data.quantity > 0 &&
+             data.notionalUsd is number && data.notionalUsd >= 0 &&
+             data.feeUsd is number && data.feeUsd >= 0 &&
+             data.pnlUsd is number &&
+             data.reason is string && data.reason.size() >= 1 && data.reason.size() <= 160 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidRiskProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.maxDailyLossUsd is number && data.maxDailyLossUsd >= 10 && data.maxDailyLossUsd <= 1000000 &&
+             data.maxPortfolioDrawdownPct is number && data.maxPortfolioDrawdownPct >= 1 && data.maxPortfolioDrawdownPct <= 90 &&
+             data.maxOpenPositions is int && data.maxOpenPositions >= 1 && data.maxOpenPositions <= 50 &&
+             data.maxLeverageCap is number && data.maxLeverageCap >= 1 && data.maxLeverageCap <= 20 &&
+             data.defaultStopLossPct is number && data.defaultStopLossPct >= 0.1 && data.defaultStopLossPct <= 50 &&
+             data.defaultTakeProfitPct is number && data.defaultTakeProfitPct >= 0.1 && data.defaultTakeProfitPct <= 500 &&
+             data.defaultTrailingStopPct is number && data.defaultTrailingStopPct >= 0 && data.defaultTrailingStopPct <= 25 &&
+             data.slippageTolerancePct is number && data.slippageTolerancePct >= 0.01 && data.slippageTolerancePct <= 10 &&
+             data.cooldownMinutes is int && data.cooldownMinutes >= 0 && data.cooldownMinutes <= 1440 &&
+             data.circuitBreakerTriggered is bool &&
+             data.autoPauseOnHighVolatility is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidExchangeConnection(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.exchangeName is string && data.exchangeName.size() >= 1 && data.exchangeName.size() <= 40 &&
+             data.assetClass in ['CRYPTO', 'METALS', 'FOREX'] &&
+             data.apiKeyLabel is string && data.apiKeyLabel.size() <= 40 &&
+             data.isPaperMode is bool &&
+             data.isConnected is bool &&
+             data.latencyMs is int && data.latencyMs >= 0 && data.latencyMs <= 60000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidWalletAccount(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.availableCashUsd is number && data.availableCashUsd >= 0 && data.availableCashUsd <= 100000000 &&
+             data.totalDepositedUsd is number && data.totalDepositedUsd >= 0 && data.totalDepositedUsd <= 100000000 &&
+             data.totalWithdrawnUsd is number && data.totalWithdrawnUsd >= 0 && data.totalWithdrawnUsd <= 100000000 &&
+             data.currency == 'USD' &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidWalletTransaction(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.type in ['DEPOSIT', 'WITHDRAW'] &&
+             data.method is string && data.method.size() >= 1 && data.method.size() <= 40 &&
+             data.amountUsd is number && data.amountUsd >= 1 && data.amountUsd <= 1000000 &&
+             data.balanceAfterUsd is number && data.balanceAfterUsd >= 0 && data.balanceAfterUsd <= 100000000 &&
+             data.status in ['COMPLETED', 'PENDING'] &&
+             data.note is string && data.note.size() <= 120 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow read, write: if false;
+
+      match /bots/{botId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(botId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(botId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'name', 'assetClass', 'exchange', 'symbol', 'strategy',
+                           'executionMode', 'status', 'allocatedCapitalUsd', 'leverage',
+                           'stopLossPct', 'takeProfitPct', 'trailingStopPct', 'maxPositionPct',
+                           'rsiOversold', 'rsiOverbought', 'gridLevels', 'realizedPnlUsd',
+                           'totalTrades', 'winningTrades', 'openPositionSide', 'openEntryPrice',
+                           'openQuantity', 'peakUnrealizedPct', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'name', 'assetClass', 'exchange', 'symbol', 'strategy',
+                           'strategies', 'strategyMode',
+                           'executionMode', 'status', 'allocatedCapitalUsd', 'leverage',
+                           'stopLossPct', 'takeProfitPct', 'trailingStopPct', 'maxPositionPct',
+                           'rsiOversold', 'rsiOverbought', 'gridLevels', 'realizedPnlUsd',
+                           'totalTrades', 'winningTrades', 'openPositionSide', 'openEntryPrice',
+                           'openQuantity', 'peakUnrealizedPct', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTradingBot(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(botId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTradingBot(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'assetClass', 'exchange', 'symbol', 'strategy',
+                           'strategies', 'strategyMode',
+                           'executionMode', 'status', 'allocatedCapitalUsd', 'leverage',
+                           'stopLossPct', 'takeProfitPct', 'trailingStopPct', 'maxPositionPct',
+                           'rsiOversold', 'rsiOverbought', 'gridLevels', 'realizedPnlUsd',
+                           'totalTrades', 'winningTrades', 'openPositionSide', 'openEntryPrice',
+                           'openQuantity', 'peakUnrealizedPct', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(botId);
+      }
+
+      match /trades/{tradeId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(tradeId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(tradeId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'botId', 'botName', 'assetClass', 'exchange', 'symbol',
+                           'side', 'orderType', 'executionMode', 'price', 'quantity',
+                           'notionalUsd', 'feeUsd', 'pnlUsd', 'reason', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'botId', 'botName', 'assetClass', 'exchange', 'symbol',
+                           'side', 'orderType', 'executionMode', 'price', 'quantity',
+                           'notionalUsd', 'feeUsd', 'pnlUsd', 'reason', 'createdAt'
+                         ]) &&
+                         isValidTradeExecution(incoming(), userId);
+
+        allow update, delete: if false;
+      }
+
+      match /riskConfig/{profileId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(profileId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'maxDailyLossUsd', 'maxPortfolioDrawdownPct',
+                           'maxOpenPositions', 'maxLeverageCap', 'defaultStopLossPct',
+                           'defaultTakeProfitPct', 'defaultTrailingStopPct', 'slippageTolerancePct',
+                           'cooldownMinutes', 'circuitBreakerTriggered', 'autoPauseOnHighVolatility',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'maxDailyLossUsd', 'maxPortfolioDrawdownPct',
+                           'maxOpenPositions', 'maxLeverageCap', 'defaultStopLossPct',
+                           'defaultTakeProfitPct', 'defaultTrailingStopPct', 'slippageTolerancePct',
+                           'cooldownMinutes', 'circuitBreakerTriggered', 'autoPauseOnHighVolatility',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidRiskProfile(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidRiskProfile(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'maxDailyLossUsd', 'maxPortfolioDrawdownPct',
+                           'maxOpenPositions', 'maxLeverageCap', 'defaultStopLossPct',
+                           'defaultTakeProfitPct', 'defaultTrailingStopPct', 'slippageTolerancePct',
+                           'cooldownMinutes', 'circuitBreakerTriggered', 'autoPauseOnHighVolatility',
+                           'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(profileId);
+      }
+
+      match /exchanges/{exchangeId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(exchangeId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(exchangeId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'exchangeName', 'assetClass', 'apiKeyLabel',
+                           'isPaperMode', 'isConnected', 'latencyMs', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'exchangeName', 'assetClass', 'apiKeyLabel',
+                           'isPaperMode', 'isConnected', 'latencyMs', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidExchangeConnection(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(exchangeId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidExchangeConnection(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'exchangeName', 'assetClass', 'apiKeyLabel',
+                           'isPaperMode', 'isConnected', 'latencyMs', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(exchangeId);
+      }
+
+      match /wallet/{walletId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(walletId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(walletId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'availableCashUsd', 'totalDepositedUsd',
+                           'totalWithdrawnUsd', 'currency', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'availableCashUsd', 'totalDepositedUsd',
+                           'totalWithdrawnUsd', 'currency', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidWalletAccount(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(walletId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidWalletAccount(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'availableCashUsd', 'totalDepositedUsd',
+                           'totalWithdrawnUsd', 'currency', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(walletId);
+      }
+
+      match /walletTransactions/{txId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(txId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(txId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'type', 'method', 'amountUsd',
+                           'balanceAfterUsd', 'status', 'note', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'type', 'method', 'amountUsd',
+                           'balanceAfterUsd', 'status', 'note', 'createdAt'
+                         ]) &&
+                         isValidWalletTransaction(incoming(), userId);
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}

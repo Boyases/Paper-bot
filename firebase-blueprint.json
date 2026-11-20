@@ -1,0 +1,192 @@
+{
+  "entities": {
+    "TradingBot": {
+      "title": "TradingBot",
+      "description": "An automated algorithmic trading bot configuration and live position state.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "name": { "type": "string", "description": "Human-readable bot name." },
+        "assetClass": { "type": "string", "enum": ["CRYPTO", "METALS", "FOREX"] },
+        "exchange": { "type": "string", "enum": ["BINANCE", "COINBASE", "KRAKEN", "BYBIT", "OKX", "METALS_SPOT", "FOREX_INTERBANK", "FXPRO", "OCTAFX"] },
+        "symbol": { "type": "string", "description": "Trading pair symbol such as BTC/USDT, XAU/USD, or EUR/USD." },
+        "strategy": { "type": "string", "enum": ["EMA_CROSS", "RSI_REVERSION", "GRID", "MARTINGALE", "TRADINGVIEW_21", "DCA", "BOLLINGER"] },
+        "strategies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["EMA_CROSS", "RSI_REVERSION", "GRID", "MARTINGALE", "TRADINGVIEW_21", "DCA", "BOLLINGER"]
+          }
+        },
+        "strategyMode": { "type": "string", "enum": ["ANY", "ALL"] },
+        "executionMode": { "type": "string", "enum": ["PAPER", "LIVE_API"] },
+        "status": { "type": "string", "enum": ["RUNNING", "PAUSED", "HALTED_RISK"] },
+        "allocatedCapitalUsd": { "type": "number" },
+        "leverage": { "type": "number" },
+        "stopLossPct": { "type": "number" },
+        "takeProfitPct": { "type": "number" },
+        "trailingStopPct": { "type": "number" },
+        "maxPositionPct": { "type": "number" },
+        "rsiOversold": { "type": "integer" },
+        "rsiOverbought": { "type": "integer" },
+        "gridLevels": { "type": "integer" },
+        "realizedPnlUsd": { "type": "number" },
+        "totalTrades": { "type": "integer" },
+        "winningTrades": { "type": "integer" },
+        "openPositionSide": { "type": "string", "enum": ["NONE", "LONG", "SHORT"] },
+        "openEntryPrice": { "type": "number" },
+        "openQuantity": { "type": "number" },
+        "peakUnrealizedPct": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": [
+        "userId", "name", "assetClass", "exchange", "symbol", "strategy",
+        "executionMode", "status", "allocatedCapitalUsd", "leverage",
+        "stopLossPct", "takeProfitPct", "trailingStopPct", "maxPositionPct",
+        "rsiOversold", "rsiOverbought", "gridLevels", "realizedPnlUsd",
+        "totalTrades", "winningTrades", "openPositionSide", "openEntryPrice",
+        "openQuantity", "peakUnrealizedPct", "createdAt", "updatedAt"
+      ]
+    },
+    "TradeExecution": {
+      "title": "TradeExecution",
+      "description": "Immutable audit record of an automated trade executed by a bot.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "botId": { "type": "string" },
+        "botName": { "type": "string" },
+        "assetClass": { "type": "string", "enum": ["CRYPTO", "METALS", "FOREX"] },
+        "exchange": { "type": "string" },
+        "symbol": { "type": "string" },
+        "side": { "type": "string", "enum": ["BUY", "SELL"] },
+        "orderType": { "type": "string", "enum": ["MARKET", "STOP_LOSS", "TAKE_PROFIT", "TRAILING_STOP", "GRID_FILL"] },
+        "executionMode": { "type": "string", "enum": ["PAPER", "LIVE_API"] },
+        "price": { "type": "number" },
+        "quantity": { "type": "number" },
+        "notionalUsd": { "type": "number" },
+        "feeUsd": { "type": "number" },
+        "pnlUsd": { "type": "number" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on execution." }
+      },
+      "required": [
+        "userId", "botId", "botName", "assetClass", "exchange", "symbol",
+        "side", "orderType", "executionMode", "price", "quantity",
+        "notionalUsd", "feeUsd", "pnlUsd", "reason", "createdAt"
+      ]
+    },
+    "RiskProfile": {
+      "title": "RiskProfile",
+      "description": "Portfolio-wide automated risk management guardrails and circuit breaker state.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "maxDailyLossUsd": { "type": "number" },
+        "maxPortfolioDrawdownPct": { "type": "number" },
+        "maxOpenPositions": { "type": "integer" },
+        "maxLeverageCap": { "type": "number" },
+        "defaultStopLossPct": { "type": "number" },
+        "defaultTakeProfitPct": { "type": "number" },
+        "defaultTrailingStopPct": { "type": "number" },
+        "slippageTolerancePct": { "type": "number" },
+        "cooldownMinutes": { "type": "integer" },
+        "circuitBreakerTriggered": { "type": "boolean" },
+        "autoPauseOnHighVolatility": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "maxDailyLossUsd", "maxPortfolioDrawdownPct",
+        "maxOpenPositions", "maxLeverageCap", "defaultStopLossPct",
+        "defaultTakeProfitPct", "defaultTrailingStopPct", "slippageTolerancePct",
+        "cooldownMinutes", "circuitBreakerTriggered", "autoPauseOnHighVolatility",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "ExchangeConnection": {
+      "title": "ExchangeConnection",
+      "description": "Configured crypto exchange, precious metals, or forex broker connection metadata.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "exchangeName": { "type": "string" },
+        "assetClass": { "type": "string", "enum": ["CRYPTO", "METALS", "FOREX"] },
+        "apiKeyLabel": { "type": "string" },
+        "isPaperMode": { "type": "boolean" },
+        "isConnected": { "type": "boolean" },
+        "latencyMs": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "exchangeName", "assetClass", "apiKeyLabel",
+        "isPaperMode", "isConnected", "latencyMs", "createdAt", "updatedAt"
+      ]
+    },
+    "WalletAccount": {
+      "title": "WalletAccount",
+      "description": "User available cash treasury balance and deposit/withdrawal totals.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "availableCashUsd": { "type": "number" },
+        "totalDepositedUsd": { "type": "number" },
+        "totalWithdrawnUsd": { "type": "number" },
+        "currency": { "type": "string", "enum": ["USD"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "availableCashUsd", "totalDepositedUsd",
+        "totalWithdrawnUsd", "currency", "createdAt", "updatedAt"
+      ]
+    },
+    "WalletTransaction": {
+      "title": "WalletTransaction",
+      "description": "Immutable append-only deposit or withdrawal ledger entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["DEPOSIT", "WITHDRAW"] },
+        "method": { "type": "string" },
+        "amountUsd": { "type": "number" },
+        "balanceAfterUsd": { "type": "number" },
+        "status": { "type": "string", "enum": ["COMPLETED", "PENDING"] },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "type", "method", "amountUsd",
+        "balanceAfterUsd", "status", "note", "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/bots/{botId}": {
+      "schema": { "$ref": "#/entities/TradingBot" },
+      "description": "User-owned automated trading bots."
+    },
+    "/users/{userId}/trades/{tradeId}": {
+      "schema": { "$ref": "#/entities/TradeExecution" },
+      "description": "Append-only automated trade execution history."
+    },
+    "/users/{userId}/riskConfig/{profileId}": {
+      "schema": { "$ref": "#/entities/RiskProfile" },
+      "description": "User global risk management profile."
+    },
+    "/users/{userId}/exchanges/{exchangeId}": {
+      "schema": { "$ref": "#/entities/ExchangeConnection" },
+      "description": "User-configured exchange and broker connections."
+    },
+    "/users/{userId}/wallet/{walletId}": {
+      "schema": { "$ref": "#/entities/WalletAccount" },
+      "description": "User USD cash balance summary."
+    },
+    "/users/{userId}/walletTransactions/{txId}": {
+      "schema": { "$ref": "#/entities/WalletTransaction" },
+      "description": "Append-only deposit and withdrawal ledger."
+    }
+  }
+}

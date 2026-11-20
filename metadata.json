@@ -1,0 +1,6 @@
+{
+  "name": "QuantPulse",
+  "description": "Automated multi-asset trading bot for cryptocurrency exchanges, precious metals, and forex with real-time market analytics and risk management controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
